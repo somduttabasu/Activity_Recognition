@@ -1,0 +1,41 @@
+---
+title: "Activity Recognition"
+author: "S Basu"
+date: "February 27, 2016"
+output: html_document
+---
+
+Data from activity recognition devices are regularly used to  quantify how much of a particular activity an individual performs, but researchers rarely quantify how well they do it.The goal of this project is to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants to predict the manner in which, that is, how well they did the exercise.The participants were asked to perform barbell lifts correctly and incorrectly in 5 different ways. Class A corresponds to the specified execution of the exercise, while the other 4 classes correspond to common mistakes.
+
+I use the coursera training and testing data obtained from http://groupware.les.inf.puc-rio.br/har to predict the "classe" variable in the training set using other variables. 
+
+I set the directory and load the data from the directory. Just by looking at the training set I was inclined to use the summary statistics variables such as the average, variance, max and min values for each new window. I ran a random forest model with 406 observations and 54 variables which gave me accuracy close to 1. But those variables were missing in the test set downloaded from the coursera website. So I dropped the columns with those summary statistics (these columns also contained a lot of NAs). I then drop the columns that had missing values, as in blanks after I removed the columns with names and time-stamps.I also remove the empty columns from the test set.  
+
+```{r}
+setwd("/Users/somduttabasu/Desktop/courseradatascience/Data_project1")
+training=read.csv("pml-training.csv")
+testing=read.csv("pml-testing.csv")
+library(caret)
+library(randomForest)
+dat=apply(!is.na(training), 2, sum)>19216
+training1=training[ , dat]
+training1=training1[ ,7:93]
+training1=training1[,-c(6:14,37:42,46:54, 68:76)]
+testing1=testing[,-c(1:6, 12:36, 50:59,69:83,87:100)]
+testing1=testing1[,-c(31,33:42, 55:69, 71:80)]
+```
+I then run a random forest model with 5 fold cross validation on the new training set. I chose random forest as this is a typical classification problem and random forest model performs really well in these kinds of problems. For the algorithm to be faster I use a data partition of the training set.  
+```{r}
+InTrain<-createDataPartition(y=training1$classe,p=0.5,list=FALSE)
+training2<-training1[InTrain,]
+model= train(classe ~.,data=training2, method="rf", trControl=trainControl(method="cv",number=5), prox=TRUE, allowParallel=TRUE)
+print(model)
+Imp=varImp(model, sort=T, n.var=20)
+Imp
+```
+Some other alternative modeling choices could be used to look for a simpler model. In that case I would try to run the random forest model with the first 20 most important variables. 
+The predicted values for the test set are the following. 
+```{r}
+prediction=predict(model, testing1)
+prediction
+```
